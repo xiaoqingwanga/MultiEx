@@ -45,22 +45,38 @@ func Initlog(logLevel string, logTo string) {
 
 // Debug log, use prefix logger instead.
 func Debug(format string, args ...string) {
-	log.Debugf(format, args)
+	if len(args) > 0 {
+		log.Debugf(format, args)
+	} else {
+		log.Debug(format)
+	}
 }
 
 // Info log, use prefix logger instead.
 func Info(format string, args ...string) {
-	log.Infof(format, args)
+	if len(args) > 0 {
+		log.Infof(format, args)
+	} else {
+		log.Info(format)
+	}
 }
 
 // Warn log, use prefix logger instead.
 func Warn(format string, args ...string) {
-	log.Warnf(format, args)
+	if len(args) > 0 {
+		log.Warnf(format, args)
+	} else {
+		log.Warn(format)
+	}
 }
 
 // Error log, use prefix logger instea.
 func Error(format string, args ...string) {
-	log.Errorf(format, args)
+	if len(args) > 0 {
+		log.Errorf(format, args)
+	} else {
+		log.Error(args)
+	}
 }
 
 // PrefixLogger is a logger with prefix
@@ -87,20 +103,36 @@ func (pf *PrefixLogger) addPrefix(pfx string) {
 
 // Debug log
 func (pf *PrefixLogger) Debug(format string, args ...string) {
-	log.Debugf(pf.prefix+" "+format, args)
+	if len(args) > 0 {
+		log.Debugf(pf.prefix+" "+format, args)
+	} else {
+		log.Debug(pf.prefix + " " + format)
+	}
 }
 
 // Info log
 func (pf *PrefixLogger) Info(format string, args ...string) {
-	log.Infof(pf.prefix+" "+format, args)
+	if len(args) > 0 {
+		log.Infof(pf.prefix+" "+format, args)
+	} else {
+		log.Info(pf.prefix + " " + format)
+	}
 }
 
 // Warn log
 func (pf *PrefixLogger) Warn(format string, args ...string) {
-	log.Warnf(pf.prefix+" "+format, args)
+	if len(args) > 0 {
+		log.Warnf(pf.prefix+" "+format, args)
+	} else {
+		log.Warn(pf.prefix + " " + format)
+	}
 }
 
 // Error log
 func (pf *PrefixLogger) Error(format string, args ...string) {
-	log.Errorf(pf.prefix+" "+format, args)
+	if len(args) > 0 {
+		log.Errorf(pf.prefix+" "+format, args)
+	} else {
+		log.Error(pf.prefix + " " + format)
+	}
 }

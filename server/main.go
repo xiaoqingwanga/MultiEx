@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"MultiEx/util"
@@ -12,7 +12,7 @@ type options struct {
 }
 
 func getOptions() options {
-	clientPort := flag.String("clientPort", ":8070", "the port listening for client.")
+	clientPort := flag.String("clientPort", ":8070", "the port listening for MultiEx client.")
 	logLevel := flag.String("logLevel", "INFO", "the log level of this program.")
 	logTo := flag.String("logTo", "stdout", "the location where logs save. Empty value and stdout have special meaning")
 	return options{
@@ -23,9 +23,10 @@ func getOptions() options {
 }
 
 // Main is server entry point.
-func main() {
-	util.Initlog("info", "stdout")
-	pf := util.NewPrefixLogger("abc", "def")
-	util.Info("hello")
-	pf.Info("hello")
+func Main() {
+	options := getOptions()
+	util.Initlog(options.logLevel, options.logTo)
+
+	// Listen for MultiEx client connections and handle request
+	HandleClient(options.clientPort)
 }
