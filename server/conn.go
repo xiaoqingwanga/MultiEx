@@ -17,12 +17,17 @@ type Conn interface {
 	Write(b []byte) (n int, err error)
 	Read(b []byte) (n int, err error)
 	Close() error
+	GetID() string
 }
 
 type wrappedconn struct {
 	ID string
 	util.PrefixLogger
 	net.Conn
+}
+
+func (wc wrappedconn) GetID() string  {
+	return wc.ID
 }
 
 type listener struct {
