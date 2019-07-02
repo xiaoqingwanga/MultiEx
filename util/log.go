@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Initlog init log for use
+// Initlog init log for use, should init only once.
 func Initlog(logLevel string, logTo string) {
 	// Lower input
 	logTo = strings.ToLower(logTo)
@@ -71,7 +71,7 @@ func Warn(format string, args ...string) {
 }
 
 // Error log, use prefix logger instea.
-func Error(format string, args ...string) {
+func Error(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Errorf(format, args)
 	} else {
@@ -88,12 +88,13 @@ type PrefixLogger struct {
 func NewPrefixLogger(pfx ...string) PrefixLogger {
 	pl := PrefixLogger{}
 	for _, p := range pfx {
-		pl.addPrefix(p)
+		pl.AddPrefix(p)
 	}
 	return pl
 }
 
-func (pf *PrefixLogger) addPrefix(pfx string) {
+// AddPrefix add prefix to log.
+func (pf *PrefixLogger) AddPrefix(pfx string) {
 	if len(pf.prefix) != 0 {
 		pf.prefix += " "
 	}
@@ -102,7 +103,7 @@ func (pf *PrefixLogger) addPrefix(pfx string) {
 }
 
 // Debug log
-func (pf *PrefixLogger) Debug(format string, args ...string) {
+func (pf *PrefixLogger) Debug(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Debugf(pf.prefix+" "+format, args)
 	} else {
@@ -111,7 +112,7 @@ func (pf *PrefixLogger) Debug(format string, args ...string) {
 }
 
 // Info log
-func (pf *PrefixLogger) Info(format string, args ...string) {
+func (pf *PrefixLogger) Info(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Infof(pf.prefix+" "+format, args)
 	} else {
@@ -120,7 +121,7 @@ func (pf *PrefixLogger) Info(format string, args ...string) {
 }
 
 // Warn log
-func (pf *PrefixLogger) Warn(format string, args ...string) {
+func (pf *PrefixLogger) Warn(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Warnf(pf.prefix+" "+format, args)
 	} else {
@@ -129,7 +130,7 @@ func (pf *PrefixLogger) Warn(format string, args ...string) {
 }
 
 // Error log
-func (pf *PrefixLogger) Error(format string, args ...string) {
+func (pf *PrefixLogger) Error(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Errorf(pf.prefix+" "+format, args)
 	} else {
