@@ -18,6 +18,7 @@ type Conn interface {
 	Read(b []byte) (n int, err error)
 	Close() error
 	GetID() string
+	RemoteAddr() net.Addr
 }
 
 type wrappedconn struct {
@@ -43,6 +44,7 @@ func listen(port string) (l *listener) {
 	l = &listener{
 		conns: make(chan Conn),
 	}
+	util.Info("listen at %s",port)
 	go func() {
 		for {
 			c, err := oL.Accept()

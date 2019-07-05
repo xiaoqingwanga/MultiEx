@@ -32,7 +32,6 @@ func ReadMsg(r io.Reader) (m Message, e error) {
 	if e != nil {
 		return
 	}
-
 	switch pkg.Typ {
 	case "NewClient":
 		m = &NewClient{}
@@ -44,6 +43,8 @@ func ReadMsg(r io.Reader) (m Message, e error) {
 		m = &CloseProxy{}
 	case "ActivateProxy":
 		m = &ActivateProxy{}
+	case "ForwardInfo":
+		m = &ForwardInfo{}
 	case "Ping":
 		m = &Ping{}
 	case "Pong":
@@ -54,6 +55,8 @@ func ReadMsg(r io.Reader) (m Message, e error) {
 		m = &CloseCtrl{}
 	case "GResponse":
 		m = &GResponse{}
+	case "ClientNotExist":
+		m = &ClientNotExist{}
 	default:
 		e = fmt.Errorf("cannot parse connection type")
 		return
@@ -67,9 +70,6 @@ func WriteMsg(w io.Writer, msg Message) (e error) {
 
 	typ := reflect.TypeOf(msg).Name()
 
-	if e != nil {
-		return
-	}
 	pBytes, e := json.Marshal(struct {
 		Typ string
 		Msg interface{}
@@ -85,11 +85,11 @@ func WriteMsg(w io.Writer, msg Message) (e error) {
 	if e != nil {
 		return
 	}
-	len, e := w.Write(pBytes)
+	l, e := w.Write(pBytes)
 	if e != nil {
 		return
 	}
-	if int16(len) != pLen {
+	if int16(l) != pLen {
 		e = fmt.Errorf("write package to writer failed")
 	}
 	return

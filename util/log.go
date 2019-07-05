@@ -44,7 +44,7 @@ func Initlog(logLevel string, logTo string) {
 }
 
 // Debug log, use prefix logger instead.
-func Debug(format string, args ...string) {
+func Debug(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Debugf(format, args)
 	} else {
@@ -53,7 +53,7 @@ func Debug(format string, args ...string) {
 }
 
 // Info log, use prefix logger instead.
-func Info(format string, args ...string) {
+func Info(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Infof(format, args)
 	} else {
@@ -62,7 +62,7 @@ func Info(format string, args ...string) {
 }
 
 // Warn log, use prefix logger instead.
-func Warn(format string, args ...string) {
+func Warn(format string, args ...interface{}) {
 	if len(args) > 0 {
 		log.Warnf(format, args)
 	} else {

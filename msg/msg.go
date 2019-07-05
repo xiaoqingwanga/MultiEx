@@ -49,6 +49,16 @@ type CloseProxy struct {
 type ActivateProxy struct {
 }
 
+type ClientNotExist struct {
+
+}
+
+
+// ForwardInfo tell MultiEx client which port public request
+type ForwardInfo struct {
+	Port string
+}
+
 // GResponse is general response, should not use
 type GResponse struct {
 	Msg string
