@@ -4,6 +4,7 @@ import (
 	"MultiEx/util"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"time"
 )
@@ -37,7 +38,7 @@ type listener struct {
 	conns chan Conn
 }
 
-func listen(port string) (l *listener) {
+func listen(port string,reg ClientRegistry) (l *listener) {
 	// old style listener
 	oL, err := net.Listen("tcp", port)
 	if err != nil {
@@ -51,8 +52,9 @@ func listen(port string) (l *listener) {
 		for {
 			c, err := oL.Accept()
 			if err != nil {
-				util.Error("listener %v is closed",oL)
-				break
+				util.Error("MultiEx client listener at %v is closed,%v",oL.Addr().String(),err)
+				stopApp(reg)
+				return
 			}
 			// wrap connection
 			wC := &wrappedconn{
@@ -65,4 +67,12 @@ func listen(port string) (l *listener) {
 		}
 	}()
 	return
+}
+
+func stopApp(reg ClientRegistry)  {
+	util.Error("exit app")
+	for _,c := range reg{
+		c.stop()
+	}
+	os.Exit(1)
 }

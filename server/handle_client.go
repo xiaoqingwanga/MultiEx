@@ -11,7 +11,7 @@ import (
 // HandleClient accept client control connection,proxy connection
 func HandleClient(port string, token string, reg ClientRegistry) {
 	// Listen
-	l := listen(port)
+	l := listen(port,reg)
 
 	// Get and Handle new connection
 	for c := range l.conns {

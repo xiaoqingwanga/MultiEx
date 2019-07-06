@@ -12,8 +12,6 @@ type options struct {
 	logTo      string
 }
 
-
-
 // Main is server entry point.
 func Main() {
 	options := option()
