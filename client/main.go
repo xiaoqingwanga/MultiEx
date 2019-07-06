@@ -147,7 +147,7 @@ func proxyWork(c net.Conn) {
 		return
 	}
 	defer lc.Close()
-	go io.Copy(c,lc)
-	io.Copy(lc,c)
+	go io.Copy(lc,c)
+	io.Copy(c,lc)
 	return
 }
