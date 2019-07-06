@@ -18,6 +18,11 @@ type Client struct {
 }
 
 func (client *Client) stop() {
+	defer func() {
+		if r:=recover();r!=nil{
+			client.Conn.Warn("unexpected error: %v",r)
+		}
+	}()
 	client.Conn.Warn("close control connection")
 	client.LastPing = nil
 	client.Conn.Close()
@@ -71,15 +76,15 @@ func (client *Client) StartListener() {
 		go func(port string) {
 			l, e := net.Listen("tcp", ":"+port)
 			if e != nil {
-				client.Conn.Warn("port %s is in use", p)
-				msg.WriteMsg(client.Conn, msg.PortInUse{Port: p})
+				client.Conn.Warn("port %s is in use", port)
+				msg.WriteMsg(client.Conn, msg.PortInUse{Port: port})
 				return
 			}
 			client.Listeners = append(client.Listeners,l)
 			for {
 				c, e := l.Accept()
 				if e != nil {
-					client.Conn.Warn("listener at %s closed", p)
+					client.Conn.Warn("listener at %s closed", port)
 					break
 				}
 				client.Conn.Info("remote host:%s is coming", c.RemoteAddr().String())
