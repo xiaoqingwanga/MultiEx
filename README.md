@@ -40,7 +40,7 @@ $ ./client -remotePort [server public ip]:[server port,default 8070] -portMap 22
 ```
 **4. Access public port 2222/2223 to visit local port 1080/1100**
 
-**5. Set open files limit**
+**5. Set open files limit(Optional)**
 
 ```bash
 $ ulimit -n 65535
