@@ -9,18 +9,18 @@ import (
 
 // Client represent a MultiEx client in server.
 type Client struct {
-	ID       string
-	Conn     Conn
-	Ports    []string
+	ID        string
+	Conn      Conn
+	Ports     []string
 	Listeners []net.Listener
-	Proxies  chan Conn
-	LastPing *time.Time
+	Proxies   chan Conn
+	LastPing  *time.Time
 }
 
 func (client *Client) stop() {
 	defer func() {
-		if r:=recover();r!=nil{
-			client.Conn.Warn("unexpected error: %v",r)
+		if r := recover(); r != nil {
+			client.Conn.Warn("unexpected error: %v", r)
 		}
 	}()
 	client.Conn.Warn("close control connection")
@@ -31,7 +31,7 @@ func (client *Client) stop() {
 		msg.WriteMsg(client.Conn, msg.CloseProxy{})
 		c.Close()
 	}
-	for _,l:= range client.Listeners{
+	for _, l := range client.Listeners {
 		l.Close()
 	}
 }
@@ -56,7 +56,7 @@ func (client *Client) AcceptCmd() {
 	for {
 		m, e := msg.ReadMsg(client.Conn)
 		if e != nil {
-			client.Conn.Warn("%s when read message",e)
+			client.Conn.Warn("%s when read message", e)
 			client.stop()
 			// Maybe denial of service attack
 			break
@@ -80,7 +80,7 @@ func (client *Client) StartListener() {
 				msg.WriteMsg(client.Conn, msg.PortInUse{Port: port})
 				return
 			}
-			client.Listeners = append(client.Listeners,l)
+			client.Listeners = append(client.Listeners, l)
 			for {
 				c, e := l.Accept()
 				if e != nil {
@@ -96,9 +96,16 @@ func (client *Client) StartListener() {
 }
 
 func handlePublic(port string, c net.Conn, client *Client) {
+	defer func() {
+		if r:=recover();r!=nil{
+			client.Conn.Error("fatal when handle public conn:%v",r)
+		}
+	}()
+
 	var proxy Conn
 	var i int
 	for success := false; i < 15 && !success; i++ {
+
 		client.Conn.Info("try to get proxy connection,times:%d", i+1)
 		select {
 		case proxy = <-client.Proxies:
