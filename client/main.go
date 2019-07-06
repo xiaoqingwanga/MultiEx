@@ -105,7 +105,7 @@ func work(remote string, token string) {
 
 func ping(c net.Conn) {
 	for {
-		ticker := time.Tick(time.Second * 5)
+		ticker := time.Tick(time.Second * 10)
 		select {
 		case <-ticker:
 			if pingFlag {

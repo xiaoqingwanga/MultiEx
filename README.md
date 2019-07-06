@@ -1,5 +1,5 @@
 # Intro
-MULTIEX is a reverse proxy which expose multi ports on a local machine passing through NAT.
+MULTIEX is a user-friendly reverse proxy which expose multi ports on a local machine passing through NAT.**Only support TCP currently.**
 # Usage
 ```bash
 $ ./client -h                          
@@ -26,7 +26,7 @@ $ ./server -h
       	Token is the credential client should hold to connect this server.Server doesn't have token default.
 
 ```
-**1. Build executables inside 'cmd' folder**
+**1. Build executables inside 'cmd' folder(Prebuilt binary only supports linux)**
 
 **2. Start MultiEx server at public host**
 

@@ -38,12 +38,12 @@ func (client *Client) stop() {
 
 func (client *Client) AcceptCmd() {
 	go func() {
-		ticker := time.Tick(time.Second * 30)
+		ticker := time.Tick(time.Second * 31)
 		for {
 			select {
 			case <-ticker:
 				if client.LastPing == nil {
-					client.Conn.Error("client closed, stop ticker for ping")
+					client.Conn.Error("client already closed, stop ticker for ping")
 					return
 				}
 				if time.Now().Sub(*client.LastPing) > time.Minute {
@@ -124,8 +124,8 @@ func handlePublic(port string, c net.Conn, client *Client) {
 					success = true
 					break
 				}
-			case <-time.After(time.Second * 10):
-				client.Conn.Error("wait for 10 seconds, and there isn't any proxy available still")
+			case <-time.After(time.Second * 20):
+				client.Conn.Error("wait for 20 seconds, and there isn't any proxy available still")
 				client.Conn.Error("cannot get proxy, client to be closed")
 				client.stop()
 				return
