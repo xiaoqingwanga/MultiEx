@@ -26,14 +26,16 @@ $ ./server -h
       	Token is the credential client should hold to connect this server.Server doesn't have token default.
 
 ```
-**1. build executable inside 'cmd' folder**
+**1. Build executables inside 'cmd' folder**
 
-**2. start MultiEx server at public host**
+**2. Start MultiEx server at public host**
+
 ```bash
 $ ./server -token a
 ```
-**3. start MultiEx client at local host behind NAT**
+**3. Start MultiEx client at local host behind NAT**
+
 ```bash
 $ ./client -remotePort [ip]:[port] -portMap 2222-1800,2223-1100 -token a
 ```
-**4. access public port 2222 to visit local port 22**
+**4. Access public port 2222/2223 to visit local port 1080/1100**
