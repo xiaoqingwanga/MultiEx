@@ -31,16 +31,14 @@ $ ./server -h
 **2. Start MultiEx server at public host**
 
 ```bash
-$ ./server -token a
+$ ./server -token [your token]
 ```
-**3. Start MultiEx client at local host behind NAT**
+**3. Start MultiEx client at local host behind NAT(e.g. access public port 2222/2223 to visit local port 1800/1100)**
 
 ```bash
-$ ./client -remotePort [server public ip]:[server port,default 8070] -portMap 2222-1800,2223-1100 -token a
+$ ./client -remotePort [server public ip]:[server port,default 8070] -portMap 2222-1800,2223-1100 -token [your token]
 ```
-**4. Access public port 2222/2223 to visit local port 1080/1100**
-
-**5. Set open files limit(Optional)**
+**4. Set open files limit(Optional)**
 
 ```bash
 $ ulimit -n 65535
