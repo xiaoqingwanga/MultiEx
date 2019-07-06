@@ -32,7 +32,7 @@ func Main() {
 	PortMap = options.portMap
 
 	//work(options.remotePort, options.token)
-	work(":8070", options.token)
+	work(options.remotePort, options.token)
 }
 
 func option() options {

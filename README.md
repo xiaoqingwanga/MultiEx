@@ -34,6 +34,6 @@ $ ./server -token a
 ```
 **3. start MultiEx client at local host behind NAT**
 ```bash
-$ ./client -portMap 2222-1800,2223-1100 -token a
+$ ./client -remotePort [ip]:[port] -portMap 2222-1800,2223-1100 -token a
 ```
 **4. access public port 2222 to visit local port 22**
