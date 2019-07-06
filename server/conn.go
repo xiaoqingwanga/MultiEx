@@ -4,6 +4,7 @@ import (
 	"MultiEx/util"
 	"math/rand"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type Conn interface {
 	Close() error
 	GetID() string
 	RemoteAddr() net.Addr
+	ReplacePrefix(old string,new string)
 }
 
 type wrappedconn struct {
@@ -54,11 +56,11 @@ func listen(port string) (l *listener) {
 			}
 			// wrap connection
 			wC := &wrappedconn{
-				ID:           string(time.Now().Unix()) + string(rand.Int31n(10)),
+				ID:           strconv.Itoa(int(time.Now().Unix())) + strconv.Itoa(rand.Intn(10)),
 				Conn:         c,
-				PrefixLogger: util.NewPrefixLogger("conn"),
+				PrefixLogger: util.NewPrefixLogger(),
 			}
-			wC.AddPrefix(wC.ID)
+			wC.AddPrefix("conn-"+wC.ID)
 			l.conns <- wC
 		}
 	}()

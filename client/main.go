@@ -31,7 +31,8 @@ func Main() {
 	PortMap = make(map[string]string)
 	PortMap = options.portMap
 
-	work(options.remotePort, options.token)
+	//work(options.remotePort, options.token)
+	work(":8070", options.token)
 }
 
 func option() options {
@@ -64,6 +65,7 @@ func work(remote string, token string) {
 		util.Info("%v", e)
 		return
 	}
+	util.Info("connect server success")
 
 	var ports []string
 	for p, _ := range PortMap {
@@ -73,7 +75,7 @@ func work(remote string, token string) {
 	for {
 		m, e := msg.ReadMsg(ctrl)
 		if e != nil {
-			util.Error("%v", e)
+			util.Error("server die, %v.maybe wrong token", e)
 			return
 		}
 		switch nm := m.(type) {
@@ -84,7 +86,12 @@ func work(remote string, token string) {
 			util.Info("server pong")
 			pingFlag = false
 		case *msg.PortInUse:
-			util.Warn("%s is in use.%s->%s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
+			util.Warn("port %s is in use. %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
+			delete(PortMap, nm.Port)
+			if len(PortMap)==0{
+				util.Warn("no port mapping available,exit")
+				return
+			}
 		case *msg.NewProxy:
 			p, e := net.Dial("tcp", remote)
 			if e != nil {
@@ -115,9 +122,14 @@ func ping(c net.Conn) {
 }
 
 func proxyWork(c net.Conn) {
+	defer func() {
+		util.Info("a proxy stop")
+		c.Close()
+	}()
 	msg.WriteMsg(c, msg.NewProxy{ClientID: ClientID})
 	m, _ := msg.ReadMsg(c)
 	m, e := msg.ReadMsg(c)
+	util.Info("remote server ask me start a proxy")
 	if e != nil {
 		util.Warn("proxy connection die")
 		return
@@ -130,9 +142,12 @@ func proxyWork(c net.Conn) {
 
 	lc,e := net.Dial("tcp",":"+PortMap[nm.Port])
 	if e!=nil{
-		util.Warn("%v",e)
+		util.Warn("dial local port fail, %v",e)
+		c.Close()
 		return
 	}
+	defer lc.Close()
 	go io.Copy(c,lc)
 	io.Copy(lc,c)
+	return
 }

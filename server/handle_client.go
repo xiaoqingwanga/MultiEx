@@ -4,13 +4,12 @@ import (
 	"MultiEx/msg"
 	"MultiEx/util"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
-
-
 // HandleClient accept client control connection,proxy connection
-func HandleClient(token string, port string, reg ClientRegistry) {
+func HandleClient(port string, token string, reg ClientRegistry) {
 	// Listen
 	l := listen(port)
 
@@ -23,25 +22,24 @@ func HandleClient(token string, port string, reg ClientRegistry) {
 				}
 			}()
 
-			c.Info("start read message")
 			m, e := msg.ReadMsg(c)
 			if e != nil {
-				c.Warn("cannot read message from %s",c.RemoteAddr().String())
+				c.Warn("cannot read cmd from %s", c.RemoteAddr().String())
 				c.Close()
 				return
 			}
-			c.Info("successfully read message")
 			switch nM := m.(type) {
 			case *msg.NewClient:
+				c.ReplacePrefix("conn","ctrl")
 				if token != (*nM).Token {
-					c.Warn("wrong token taken from %s",c.RemoteAddr().String())
+					c.Warn("wrong token taken from %s", c.RemoteAddr().String())
 					c.Close()
 					return
 				}
 
 				now := time.Now()
 				client := &Client{
-					ID:       string(time.Now().Unix() + rand.Int63n(10)),
+					ID:       strconv.Itoa(int(time.Now().Unix())) + strconv.Itoa(rand.Intn(10)),
 					Conn:     c,
 					Ports:    nM.Forwards,
 					Proxies:  make(chan Conn, 10),
@@ -53,22 +51,21 @@ func HandleClient(token string, port string, reg ClientRegistry) {
 				msg.WriteMsg(c, msg.ReNewClient{
 					ID: client.ID,
 				})
-				msg.WriteMsg(c,msg.NewProxy{})
+				msg.WriteMsg(c, msg.NewProxy{})
 				go client.AcceptCmd()
 				go client.StartListener()
 			case *msg.NewProxy:
-				oC,ok := reg[nM.ClientID]
-				if !ok{
-					util.Info("MultiEx client %s contains wrong client id",c.RemoteAddr().String())
+				c.ReplacePrefix("conn","proxy")
+				oC, ok := reg[nM.ClientID]
+				if !ok {
+					util.Info("MultiEx client %s contains wrong client id", c.RemoteAddr().String())
 					c.Close()
 					break
 				}
 				oC.Proxies <- c
-				c.AddPrefix("client-"+oC.ID)
+				c.AddPrefix("client-" + oC.ID)
 				oC.Conn.Info("a new proxy connection added")
 			}
 		}()
 	}
 }
-
-

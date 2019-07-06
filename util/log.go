@@ -46,7 +46,7 @@ func Initlog(logLevel string, logTo string) {
 // Debug log, use prefix logger instead.
 func Debug(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Debugf(format, args)
+		log.Debugf(format, args...)
 	} else {
 		log.Debug(format)
 	}
@@ -55,7 +55,7 @@ func Debug(format string, args ...interface{}) {
 // Info log, use prefix logger instead.
 func Info(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Infof(format, args)
+		log.Infof(format, args...)
 	} else {
 		log.Info(format)
 	}
@@ -64,7 +64,7 @@ func Info(format string, args ...interface{}) {
 // Warn log, use prefix logger instead.
 func Warn(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Warnf(format, args)
+		log.Warnf(format, args...)
 	} else {
 		log.Warn(format)
 	}
@@ -73,7 +73,7 @@ func Warn(format string, args ...interface{}) {
 // Error log, use prefix logger instea.
 func Error(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Errorf(format, args)
+		log.Errorf(format, args...)
 	} else {
 		log.Error(args)
 	}
@@ -102,10 +102,14 @@ func (pf *PrefixLogger) AddPrefix(pfx string) {
 	pf.prefix += "[" + pfx + "]"
 }
 
+func (pf *PrefixLogger) ReplacePrefix(old string,new string) {
+	pf.prefix = strings.ReplaceAll(pf.prefix,old,new)
+}
+
 // Debug log
 func (pf *PrefixLogger) Debug(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Debugf(pf.prefix+" "+format, args)
+		log.Debugf(pf.prefix+" "+format, args...)
 	} else {
 		log.Debug(pf.prefix + " " + format)
 	}
@@ -114,7 +118,7 @@ func (pf *PrefixLogger) Debug(format string, args ...interface{}) {
 // Info log
 func (pf *PrefixLogger) Info(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Infof(pf.prefix+" "+format, args)
+		log.Infof(pf.prefix+" "+format, args...)
 	} else {
 		log.Info(pf.prefix + " " + format)
 	}
@@ -123,7 +127,7 @@ func (pf *PrefixLogger) Info(format string, args ...interface{}) {
 // Warn log
 func (pf *PrefixLogger) Warn(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Warnf(pf.prefix+" "+format, args)
+		log.Warnf(pf.prefix+" "+format, args...)
 	} else {
 		log.Warn(pf.prefix + " " + format)
 	}
@@ -132,7 +136,7 @@ func (pf *PrefixLogger) Warn(format string, args ...interface{}) {
 // Error log
 func (pf *PrefixLogger) Error(format string, args ...interface{}) {
 	if len(args) > 0 {
-		log.Errorf(pf.prefix+" "+format, args)
+		log.Errorf(pf.prefix+" "+format, args...)
 	} else {
 		log.Error(pf.prefix + " " + format)
 	}
