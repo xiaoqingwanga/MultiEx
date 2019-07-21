@@ -60,15 +60,17 @@ func option() options {
 }
 
 func work(remote string, token string) {
-	ctrl, e := net.Dial("tcp", remote)
+
+	util.Info("attempt to connect '%s' with token '%s' ...", remote, token)
+	ctrl, e := net.DialTimeout("tcp", remote, time.Second*5)
 	if e != nil {
-		util.Info("%v", e)
+		util.Error("%v", e)
 		return
 	}
 	util.Info("connect server success")
 
 	var ports []string
-	for p, _ := range PortMap {
+	for p := range PortMap {
 		ports = append(ports, p)
 	}
 	msg.WriteMsg(ctrl, msg.NewClient{Token: token, Forwards: ports})
@@ -88,7 +90,7 @@ func work(remote string, token string) {
 		case *msg.PortInUse:
 			util.Warn("port %s is in use. %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
 			delete(PortMap, nm.Port)
-			if len(PortMap)==0{
+			if len(PortMap) == 0 {
 				util.Warn("no port mapping available,exit")
 				return
 			}
@@ -135,19 +137,19 @@ func proxyWork(c net.Conn) {
 		return
 	}
 	nm, ok := m.(*msg.ForwardInfo)
-	if !ok{
+	if !ok {
 		util.Warn("remote server seems insane...")
 		return
 	}
 
-	lc,e := net.Dial("tcp",":"+PortMap[nm.Port])
-	if e!=nil{
-		util.Warn("dial local port fail, %v",e)
+	lc, e := net.Dial("tcp", ":"+PortMap[nm.Port])
+	if e != nil {
+		util.Warn("dial local port fail, %v", e)
 		c.Close()
 		return
 	}
 	defer lc.Close()
-	go io.Copy(lc,c)
-	io.Copy(c,lc)
+	go io.Copy(lc, c)
+	io.Copy(c, lc)
 	return
 }
