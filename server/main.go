@@ -1,7 +1,7 @@
 package server
 
 import (
-	"MultiEx/util"
+	"MultiEx/log"
 	"flag"
 )
 
@@ -15,12 +15,12 @@ type options struct {
 // Main is server entry point.
 func Main() {
 	options := option()
-	util.Initlog(options.logLevel, options.logTo)
+	log.Initlog(options.logLevel, options.logTo)
 
 	var clientRegistry ClientRegistry = make(map[string]*Client)
 
 	// Listen for MultiEx client connections and handle request
-	HandleClient(options.clientPort, options.token, clientRegistry)
+	HandleClient(options.clientPort, options.token, &clientRegistry)
 }
 
 func option() options {

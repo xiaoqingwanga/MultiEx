@@ -1,8 +1,8 @@
 package client
 
 import (
+	"MultiEx/log"
 	"MultiEx/msg"
-	"MultiEx/util"
 	"flag"
 	"io"
 	"net"
@@ -23,10 +23,17 @@ var ClientID string
 
 var pingFlag bool
 
+/**
+控制连接终端后，重试三次
+*/
+const RETRY_LIMIT = 3;
+
+var retryCount = 0;
+
 func Main() {
 	options := option()
 
-	util.Initlog(options.logLevel, options.logTo)
+	log.Initlog(options.logLevel, options.logTo)
 
 	PortMap = make(map[string]string)
 	PortMap = options.portMap
@@ -61,48 +68,76 @@ func option() options {
 
 func work(remote string, token string) {
 
-	util.Info("attempt to connect '%s' with token '%s' ...", remote, token)
-	ctrl, e := net.DialTimeout("tcp", remote, time.Second*5)
-	if e != nil {
-		util.Error("%v", e)
+	ctrl, ports := connect(remote, token)
+	if ctrl == nil {
 		return
-	}
-	util.Info("connect server success")
-
-	var ports []string
-	for p := range PortMap {
-		ports = append(ports, p)
 	}
 	msg.WriteMsg(ctrl, msg.NewClient{Token: token, Forwards: ports})
 	for {
 		m, e := msg.ReadMsg(ctrl)
 		if e != nil {
-			util.Error("server die, %v.maybe wrong token", e)
-			return
+			log.Error("control connection die, %v.", e)
+			log.Error("maybe wrong token")
+			retryCount++;
+			ctrl = nil
+			for retryCount < RETRY_LIMIT && ctrl == nil {
+				if retryCount != 0 {
+					log.Info("connect fail.try again 2 seconds later")
+					time.Sleep(time.Second * 2)
+				}
+				log.Info("try to reconnect %d", retryCount)
+				ctrl, ports = connect(remote, token)
+			}
+			if ctrl != nil {
+				msg.WriteMsg(ctrl, msg.NewClient{Token: token, Forwards: ports})
+				continue
+			} else {
+				log.Info("cannot connect server,exit")
+				return
+			}
 		}
+		retryCount = 0
 		switch nm := m.(type) {
 		case *msg.ReNewClient:
 			ClientID = nm.ID
 			go ping(ctrl)
 		case *msg.Pong:
-			util.Info("server pong")
+			log.Info("server pong")
 			pingFlag = false
 		case *msg.PortInUse:
-			util.Warn("port %s is in use. %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
+			log.Warn("port %s is in use. %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
 			delete(PortMap, nm.Port)
 			if len(PortMap) == 0 {
-				util.Warn("no port mapping available,exit")
+				log.Warn("no port mapping available,exit")
 				return
 			}
 		case *msg.NewProxy:
+			log.Info("receive NewProxy cmd")
 			p, e := net.Dial("tcp", remote)
 			if e != nil {
-				util.Error("cannot dial remote:%v", e)
+				log.Error("cannot dial remote,%v", e)
 				break
 			}
-			go proxyWork(p)
+			msg.WriteMsg(p, msg.NewProxy{ClientID: ClientID})
+			go forward(p)
 		}
 	}
+}
+
+func connect(remote, token string) (conn net.Conn, ports []string) {
+	log.Info("attempt to connect '%s' with token '%s' ...", remote, token)
+	conn, e := net.DialTimeout("tcp", remote, time.Second*5)
+	if e != nil {
+		log.Error("%v", e)
+		conn = nil
+		return
+	}
+	log.Info("connect server success")
+
+	for p := range PortMap {
+		ports = append(ports, p)
+	}
+	return
 }
 
 func ping(c net.Conn) {
@@ -111,9 +146,9 @@ func ping(c net.Conn) {
 		select {
 		case <-ticker:
 			if pingFlag {
-				util.Warn("seems server die...")
+				log.Warn("your network is busy")
 			}
-			util.Info("ping server")
+			log.Info("ping server")
 			e := msg.WriteMsg(c, msg.Ping{})
 			if e != nil {
 				break
@@ -123,33 +158,33 @@ func ping(c net.Conn) {
 	}
 }
 
-func proxyWork(c net.Conn) {
+func forward(c net.Conn) {
 	defer func() {
-		util.Info("a proxy stop")
 		c.Close()
 	}()
-	msg.WriteMsg(c, msg.NewProxy{ClientID: ClientID})
-	m, _ := msg.ReadMsg(c)
 	m, e := msg.ReadMsg(c)
-	util.Info("remote server ask me start a proxy")
 	if e != nil {
-		util.Warn("proxy connection die")
-		return
-	}
-	nm, ok := m.(*msg.ForwardInfo)
-	if !ok {
-		util.Warn("remote server seems insane...")
+		log.Warn("proxy connection die")
 		return
 	}
 
+	nm, ok := m.(*msg.ForwardInfo)
+	if !ok {
+		log.Warn("remote server seems insane...")
+		return
+	}
+
+	log.Info("forwarding...")
+
 	lc, e := net.Dial("tcp", ":"+PortMap[nm.Port])
 	if e != nil {
-		util.Warn("dial local port fail, %v", e)
+		log.Warn("dial local port fail, %v", e)
 		c.Close()
 		return
 	}
 	defer lc.Close()
 	go io.Copy(lc, c)
 	io.Copy(c, lc)
+	log.Info("forward finished")
 	return
 }

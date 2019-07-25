@@ -17,15 +17,16 @@ type Client struct {
 	LastPing  *time.Time
 }
 
-func (client *Client) stop() {
+func (client *Client) Close() {
 	defer func() {
 		if r := recover(); r != nil {
 			client.Conn.Warn("unexpected error: %v", r)
 		}
 	}()
-	client.Conn.Warn("close control connection")
+	client.Conn.Info("client closing...")
 	client.LastPing = nil
 	client.Conn.Close()
+	// close channel,dont accept new proxy
 	close(client.Proxies)
 	for c := range client.Proxies {
 		msg.WriteMsg(client.Conn, msg.CloseProxy{})
@@ -34,9 +35,10 @@ func (client *Client) stop() {
 	for _, l := range client.Listeners {
 		l.Close()
 	}
+	client.Conn.Info("close finished")
 }
 
-func (client *Client) AcceptCmd() {
+func (client *Client) AcceptCmd(reg *ClientRegistry) {
 	go func() {
 		ticker := time.Tick(time.Second * 31)
 		for {
@@ -48,7 +50,8 @@ func (client *Client) AcceptCmd() {
 				}
 				if time.Now().Sub(*client.LastPing) > time.Minute {
 					client.Conn.Warn("client not ping too long")
-					client.stop()
+					client.Close()
+					reg.Unregister(client.ID)
 				}
 			}
 		}
@@ -57,7 +60,7 @@ func (client *Client) AcceptCmd() {
 		m, e := msg.ReadMsg(client.Conn)
 		if e != nil {
 			client.Conn.Warn("%s when read message", e)
-			client.stop()
+			client.Close()
 			// Maybe denial of service attack
 			break
 		}
@@ -97,8 +100,8 @@ func (client *Client) StartListener() {
 
 func handlePublic(port string, c net.Conn, client *Client) {
 	defer func() {
-		if r:=recover();r!=nil{
-			client.Conn.Error("fatal when handle public conn:%v",r)
+		if r := recover(); r != nil {
+			client.Conn.Error("fatal when handle public conn:%v", r)
 		}
 	}()
 
@@ -111,8 +114,6 @@ func handlePublic(port string, c net.Conn, client *Client) {
 		case proxy = <-client.Proxies:
 			// A new proxy
 			msg.WriteMsg(client.Conn, msg.NewProxy{})
-			// Must write twice to test if connection close
-			msg.WriteMsg(proxy, msg.ActivateProxy{})
 			e := msg.WriteMsg(proxy, msg.ForwardInfo{Port: port})
 			if e == nil {
 				success = true
@@ -125,7 +126,6 @@ func handlePublic(port string, c net.Conn, client *Client) {
 			select {
 			case proxy = <-client.Proxies:
 				msg.WriteMsg(client.Conn, msg.NewProxy{})
-				msg.WriteMsg(proxy, msg.ActivateProxy{})
 				e := msg.WriteMsg(proxy, msg.ForwardInfo{Port: port})
 				if e == nil {
 					success = true
@@ -134,7 +134,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 			case <-time.After(time.Second * 20):
 				client.Conn.Error("wait for 20 seconds, and there isn't any proxy available still")
 				client.Conn.Error("cannot get proxy, client to be closed")
-				client.stop()
+				client.Close()
 				return
 			}
 		}
@@ -142,15 +142,15 @@ func handlePublic(port string, c net.Conn, client *Client) {
 
 	if i == 15 {
 		client.Conn.Error("cannot get proxy, client to be closed")
-		client.stop()
+		client.Close()
 		return
 	}
 
 	proxy.AddPrefix("remote-" + c.RemoteAddr().String())
-	proxy.Info("proxy selected, begin transfer data")
+	proxy.Info("proxy selected, forward start")
 
 	defer func() {
-		client.Conn.Info("proxy closed, public visitor:%s", c.RemoteAddr().String())
+		client.Conn.Info("forward finished, public visitor:%s", c.RemoteAddr().String())
 		proxy.Close()
 		c.Close()
 	}()
@@ -170,5 +170,15 @@ func (registry *ClientRegistry) Register(id string, client *Client) (oClient *Cl
 		return
 	}
 	(*registry)[id] = client
+	return
+}
+
+// Register register client
+func (registry *ClientRegistry) Unregister(id string) (oClient *Client) {
+	oClient, ok := (*registry)[id]
+	if ok {
+		delete(*registry, id)
+		return
+	}
 	return
 }

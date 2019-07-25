@@ -1,7 +1,7 @@
 package server
 
 import (
-	"MultiEx/util"
+	"MultiEx/log"
 	"math/rand"
 	"net"
 	"os"
@@ -21,16 +21,16 @@ type Conn interface {
 	Close() error
 	GetID() string
 	RemoteAddr() net.Addr
-	ReplacePrefix(old string,new string)
+	ReplacePrefix(old string, new string)
 }
 
 type wrappedconn struct {
 	ID string
-	util.PrefixLogger
+	log.PrefixLogger
 	net.Conn
 }
 
-func (wc wrappedconn) GetID() string  {
+func (wc wrappedconn) GetID() string {
 	return wc.ID
 }
 
@@ -38,7 +38,7 @@ type listener struct {
 	conns chan Conn
 }
 
-func listen(port string,reg ClientRegistry) (l *listener) {
+func listen(port string, reg *ClientRegistry) (l *listener) {
 	// old style listener
 	oL, err := net.Listen("tcp", port)
 	if err != nil {
@@ -47,12 +47,12 @@ func listen(port string,reg ClientRegistry) (l *listener) {
 	l = &listener{
 		conns: make(chan Conn),
 	}
-	util.Info("listen at %s",port)
+	log.Info("listen at %s", port)
 	go func() {
 		for {
 			c, err := oL.Accept()
 			if err != nil {
-				util.Error("MultiEx client listener at %v is closed,%v",oL.Addr().String(),err)
+				log.Error("MultiEx client listener closed,%v", err)
 				stopApp(reg)
 				return
 			}
@@ -60,19 +60,19 @@ func listen(port string,reg ClientRegistry) (l *listener) {
 			wC := &wrappedconn{
 				ID:           strconv.Itoa(int(time.Now().Unix())) + strconv.Itoa(rand.Intn(10)),
 				Conn:         c,
-				PrefixLogger: util.NewPrefixLogger(),
+				PrefixLogger: log.NewPrefixLogger(),
 			}
-			wC.AddPrefix("conn-"+wC.ID)
+			wC.AddPrefix("conn-" + wC.ID)
 			l.conns <- wC
 		}
 	}()
 	return
 }
 
-func stopApp(reg ClientRegistry)  {
-	util.Error("exit app")
-	for _,c := range reg{
-		c.stop()
+func stopApp(reg *ClientRegistry) {
+	log.Error("exit app")
+	for _, c := range *reg {
+		c.Close()
 	}
 	os.Exit(1)
 }

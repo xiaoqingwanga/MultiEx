@@ -46,8 +46,8 @@ type NewProxy struct {
 type CloseProxy struct {
 }
 
-type ActivateProxy struct {
-}
+//type ActivateProxy struct {
+//}
 
 type ClientNotExist struct {
 

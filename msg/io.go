@@ -41,8 +41,8 @@ func ReadMsg(r io.Reader) (m Message, e error) {
 		m = &NewProxy{}
 	case "CloseProxy":
 		m = &CloseProxy{}
-	case "ActivateProxy":
-		m = &ActivateProxy{}
+	//case "ActivateProxy":
+	//	m = &ActivateProxy{}
 	case "ForwardInfo":
 		m = &ForwardInfo{}
 	case "Ping":
