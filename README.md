@@ -27,6 +27,7 @@ Usage of ./client:
     	Token is the credential client should hold to connect server.Server doesn't have token default.
 
 ```
+
 **1. Build executables inside 'cmd' folder**
 
 **2. Start MultiEx server at public host**
@@ -34,12 +35,19 @@ Usage of ./client:
 ```bash
 $ ./server -token [your token]
 ```
-**3. Start MultiEx client at local host behind NAT(e.g. access public port 2222/2223 to visit local port 1800/1100)**
+**3. Start MultiEx client at local host behind NAT**
 
+MultiEx listens at a port waiting for MultiEx client connect(Default is 8070).This port is not for mapping. So, set PortMap to map ports.
+
+e.g.   
 ```bash
-$ ./client -remotePort [server public ip]:[MultiEX server port,default 8070] -portMap 2222-1800,2223-1100 -token [your token]
+-portMap 2222-1800,2223-1100  
+# access public port 2222/2223 to visit local port 1800/1100
+# !!! Attention:PortMap is splited by '-'
 ```
-> **Attention:PortMap is splited by '-'** 
+```bash
+$ ./client -remotePort [server public ip]:[MultiEX server port] -portMap 2222-1800,2223-1100 -token [your token]
+```
 
 **4. Set open files limit(Optional)**
 
