@@ -1,6 +1,13 @@
 # Intro
 MULTIEX is a user-friendly reverse proxy which exposes multi ports on multi local machines to a public host passing through NAT.**Only TCP supported currently**
+# Design
+
+<div align=center><img src="MultiEx.png" width=700/></div>
+
+MultiEx server establishes one control connection and multi proxy connections. Control connection is used for receiving and accepting commands. As for proxy connection, every new request from public will have a “partner” proxy connection which means one proxy connection is responsible for one forwarding process.
+
 # Usage
+
 ```bash
 $ ./server -h    
 Usage of ./server:
