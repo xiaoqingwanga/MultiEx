@@ -3,8 +3,7 @@ MULTIEX is a user-friendly reverse proxy which exposes multi ports on multi loca
 # Design
 
 <div align=center><img src="MultiEx.png" width=700/></div>
-
-MultiEx server establishes one control connection and multi proxy connections. Control connection is used for receiving and accepting commands. As for proxy connection, every new request from public will have a “partner” proxy connection which means one proxy connection is responsible for one forwarding process.
+MultiEx server establishes one control connection and multi proxy connections. Control connection is used for retrieving and sending commands. As for proxy connection, every new request from public visitor will have a “partner” proxy connection which means one proxy connection is responsible for one forwarding process.
 
 # Usage
 
