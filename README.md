@@ -51,8 +51,9 @@ e.g.
 # access public port 2222/2223 to visit local port 1800/1100
 # !!! Attention:PortMap is splited by '-'
 ```
+Now, fire a client:
 ```bash
-$ ./client -remotePort [server public ip]:[MultiEX server port] -portMap 2222-1800,2223-1100 -token [your token]
+$ ./client -remotePort [server public ip]:[MultiEX server port,default 8070] -portMap 2222-1800,2223-1100 -token [your token]
 ```
 
 **4. Set open files limit(Optional)**
