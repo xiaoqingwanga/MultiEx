@@ -15,7 +15,7 @@ type options struct {
 // Main is server entry point.
 func Main() {
 	options := option()
-	log.Initlog(options.logLevel, options.logTo)
+	log.Init(options.logLevel, options.logTo)
 
 	var clientRegistry ClientRegistry = make(map[string]*Client)
 

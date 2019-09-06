@@ -8,8 +8,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Initlog init log for use, should init only once.
-func Initlog(logLevel string, logTo string) {
+// Init log for use, should init only once.
+func Init(logLevel string, logTo string) {
 	// Lower input
 	logTo = strings.ToLower(logTo)
 	logLevel = strings.ToLower(logLevel)

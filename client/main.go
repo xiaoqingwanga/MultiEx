@@ -33,7 +33,7 @@ var retryCount = 0;
 func Main() {
 	options := option()
 
-	log.Initlog(options.logLevel, options.logTo)
+	log.Init(options.logLevel, options.logTo)
 
 	PortMap = make(map[string]string)
 	PortMap = options.portMap

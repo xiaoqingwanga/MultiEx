@@ -61,7 +61,6 @@ func (client *Client) AcceptCmd(reg *ClientRegistry) {
 		if e != nil {
 			client.Conn.Warn("%s when read message", e)
 			client.Close()
-			// Maybe denial of service attack
 			break
 		}
 		switch m.(type) {
@@ -107,8 +106,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 
 	var proxy Conn
 	var i int
-	for success := false; i < 15 && !success; i++ {
-
+	for success := false; i < 3 && !success; i++ {
 		client.Conn.Info("try to get proxy connection,times:%d", i+1)
 		select {
 		case proxy = <-client.Proxies:
@@ -131,16 +129,13 @@ func handlePublic(port string, c net.Conn, client *Client) {
 					success = true
 					break
 				}
-			case <-time.After(time.Second * 20):
-				client.Conn.Error("wait for 20 seconds, and there isn't any proxy available still")
-				client.Conn.Error("cannot get proxy, client to be closed")
-				client.Close()
-				return
+			case <-time.After(time.Second * 2):
+				client.Conn.Warn("wait for 2 seconds, still no proxy.Try again")
 			}
 		}
 	}
 
-	if i == 15 {
+	if i >= 3 {
 		client.Conn.Error("cannot get proxy, client to be closed")
 		client.Close()
 		return
@@ -155,8 +150,8 @@ func handlePublic(port string, c net.Conn, client *Client) {
 		c.Close()
 	}()
 	// begin transfer data between them.
-	go io.Copy(proxy, c)
-	io.Copy(c, proxy)
+	go io.Copy(c, proxy)
+	io.Copy(proxy, c)
 	return
 }
 

@@ -26,6 +26,7 @@ func HandleClient(port string, token string, reg *ClientRegistry) {
 			if e != nil {
 				c.Warn("cannot read msg from %s", c.RemoteAddr().String())
 				c.Close()
+				// Maybe denial of service attack
 				return
 			}
 			switch nM := m.(type) {
