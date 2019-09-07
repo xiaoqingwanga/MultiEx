@@ -65,7 +65,6 @@ func (client *Client) AcceptCmd(reg *ClientRegistry) {
 		}
 		switch m.(type) {
 		case *msg.Ping:
-			client.Conn.Info("ping!")
 			now := time.Now()
 			client.LastPing = &now
 			msg.WriteMsg(client.Conn, msg.Pong{})
@@ -105,37 +104,33 @@ func handlePublic(port string, c net.Conn, client *Client) {
 	}()
 
 	var proxy Conn
-	var i int
-	for success := false; i < 3 && !success; i++ {
-		client.Conn.Info("try to get proxy connection,times:%d", i+1)
+	for i := 0; i < 5 && proxy == nil; i++ {
+		client.Conn.Info("try to get proxy connection...")
 		select {
 		case proxy = <-client.Proxies:
 			// A new proxy
 			msg.WriteMsg(client.Conn, msg.NewProxy{})
 			e := msg.WriteMsg(proxy, msg.ForwardInfo{Port: port})
-			if e == nil {
-				success = true
-				break
+			if e != nil {
+				proxy = nil
 			}
-
 		default:
-			client.Conn.Info("there isn't any proxy available, ask client connect")
+			client.Conn.Info("no proxy connections available, send NewProxy cmd")
 			msg.WriteMsg(client.Conn, msg.NewProxy{})
 			select {
 			case proxy = <-client.Proxies:
 				msg.WriteMsg(client.Conn, msg.NewProxy{})
 				e := msg.WriteMsg(proxy, msg.ForwardInfo{Port: port})
-				if e == nil {
-					success = true
-					break
+				if e != nil {
+					proxy = nil
 				}
-			case <-time.After(time.Second * 2):
-				client.Conn.Warn("wait for 2 seconds, still no proxy.Try again")
+			case <-time.After(time.Second * 3):
+				client.Conn.Warn("still no proxy after 3 secs")
 			}
 		}
 	}
 
-	if i >= 3 {
+	if proxy == nil {
 		client.Conn.Error("cannot get proxy, client to be closed")
 		client.Close()
 		return
@@ -145,7 +140,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 	proxy.Info("proxy selected, forward start")
 
 	defer func() {
-		client.Conn.Info("forward finished, public visitor:%s", c.RemoteAddr().String())
+		proxy.Info("forward finished, public visitor:%s", c.RemoteAddr().String())
 		proxy.Close()
 		c.Close()
 	}()

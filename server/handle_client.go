@@ -3,7 +3,6 @@ package server
 import (
 	"MultiEx/log"
 	"MultiEx/msg"
-	"math/rand"
 	"strconv"
 	"time"
 )
@@ -38,12 +37,14 @@ func HandleClient(port string, token string, reg *ClientRegistry) {
 					return
 				}
 
+
+				clientCounter.Inc()
 				now := time.Now()
 				client := &Client{
-					ID:       strconv.Itoa(int(time.Now().Unix())) + strconv.Itoa(rand.Intn(10)),
+					ID:       strconv.Itoa(int(clientCounter.Get())),
 					Conn:     c,
 					Ports:    nM.Forwards,
-					Proxies:  make(chan Conn, 10),
+					Proxies:  make(chan Conn, 30),
 					LastPing: &now,
 				}
 				c.AddPrefix("client-" + client.ID)

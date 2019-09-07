@@ -3,6 +3,7 @@ package server
 import (
 	"MultiEx/log"
 	"flag"
+	"MultiEx/util"
 )
 
 type options struct {
@@ -11,6 +12,10 @@ type options struct {
 	logLevel   string
 	logTo      string
 }
+
+var clientCounter util.Count
+var connCounter util.Count
+
 
 // Main is server entry point.
 func Main() {

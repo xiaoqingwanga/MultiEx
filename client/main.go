@@ -3,7 +3,9 @@ package client
 import (
 	"MultiEx/log"
 	"MultiEx/msg"
+	"MultiEx/util"
 	"flag"
+	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -21,14 +23,7 @@ type options struct {
 var PortMap map[string]string
 var ClientID string
 
-var pingFlag bool
-
-/**
-控制连接终端后，重试三次
-*/
-const RETRY_LIMIT = 3;
-
-var retryCount = 0;
+var pingFlag util.Count
 
 func Main() {
 	options := option()
@@ -68,25 +63,37 @@ func option() options {
 
 func work(remote string, token string) {
 
-	ctrl, ports := connect(remote, token)
+	ctrl, ports := dial(remote, token)
 	if ctrl == nil {
 		return
 	}
+	log.Info("attempt to connect...")
 	msg.WriteMsg(ctrl, msg.NewClient{Token: token, Forwards: ports})
 	for {
 		m, e := msg.ReadMsg(ctrl)
 		if e != nil {
-			log.Error("control connection die, %v.", e)
-			log.Error("maybe wrong token")
-			retryCount++;
+			log.Error("%v", e)
+			var retryCount int
 			ctrl = nil
-			for retryCount < RETRY_LIMIT && ctrl == nil {
-				if retryCount != 0 {
-					log.Info("connect fail.try again 2 seconds later")
-					time.Sleep(time.Second * 2)
+			template := "try to reconnect %s times, after %d seconds"
+			for retryCount < 3 && ctrl == nil {
+				var tip string
+				var t time.Duration
+				switch retryCount {
+				case 0:
+					tip = fmt.Sprintf(template, "1st", 3)
+					t = 5 * time.Second
+				case 1:
+					tip = fmt.Sprintf(template, "2nd", 60)
+					t = 30 * time.Second
+				case 2:
+					tip = fmt.Sprintf(template, "3rd", 120)
+					t = 60 * time.Second
 				}
-				log.Info("try to reconnect %d", retryCount)
-				ctrl, ports = connect(remote, token)
+				log.Info(tip)
+				time.Sleep(t)
+				ctrl, _ = dial(remote, token)
+				retryCount++
 			}
 			if ctrl != nil {
 				msg.WriteMsg(ctrl, msg.NewClient{Token: token, Forwards: ports})
@@ -96,21 +103,15 @@ func work(remote string, token string) {
 				return
 			}
 		}
-		retryCount = 0
 		switch nm := m.(type) {
 		case *msg.ReNewClient:
+			log.Info("connect server success, and client get a id:" + nm.ID)
 			ClientID = nm.ID
-			go ping(ctrl)
+			go ping(ctrl, nm.ID)
 		case *msg.Pong:
-			log.Info("server pong")
-			pingFlag = false
+			pingFlag.Dec()
 		case *msg.PortInUse:
-			log.Warn("port %s is in use. %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
-			delete(PortMap, nm.Port)
-			if len(PortMap) == 0 {
-				log.Warn("no port mapping available,exit")
-				return
-			}
+			log.Warn("server port %s is in use. mapping %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
 		case *msg.NewProxy:
 			log.Info("receive NewProxy cmd")
 			p, e := net.Dial("tcp", remote)
@@ -124,7 +125,7 @@ func work(remote string, token string) {
 	}
 }
 
-func connect(remote, token string) (conn net.Conn, ports []string) {
+func dial(remote, token string) (conn net.Conn, ports []string) {
 	log.Info("attempt to connect '%s' with token '%s' ...", remote, token)
 	conn, e := net.DialTimeout("tcp", remote, time.Second*5)
 	if e != nil {
@@ -132,7 +133,7 @@ func connect(remote, token string) (conn net.Conn, ports []string) {
 		conn = nil
 		return
 	}
-	log.Info("connect server success")
+	log.Info("dial server success")
 
 	for p := range PortMap {
 		ports = append(ports, p)
@@ -140,20 +141,21 @@ func connect(remote, token string) (conn net.Conn, ports []string) {
 	return
 }
 
-func ping(c net.Conn) {
+func ping(c net.Conn, clientId string) {
+	var fail bool
 	for {
+		if pingFlag.Get() > 2 || fail {
+			log.Info("server no heart beat for a long time" + ", and current client id:" + clientId)
+			return
+		}
 		ticker := time.Tick(time.Second * 10)
 		select {
 		case <-ticker:
-			if pingFlag {
-				log.Warn("your network is busy")
-			}
-			log.Info("ping server")
 			e := msg.WriteMsg(c, msg.Ping{})
 			if e != nil {
-				break
+				fail = true
 			}
-			pingFlag = true
+			pingFlag.Inc()
 		}
 	}
 }

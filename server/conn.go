@@ -2,11 +2,9 @@ package server
 
 import (
 	"MultiEx/log"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
-	"time"
 )
 
 // Conn represents a connection with logger.
@@ -56,9 +54,11 @@ func listen(port string, reg *ClientRegistry) (l *listener) {
 				stopApp(reg)
 				return
 			}
+
+			connCounter.Inc()
 			// wrap connection
 			wC := &wrappedconn{
-				ID:           strconv.Itoa(int(time.Now().Unix())) + strconv.Itoa(rand.Intn(10)),
+				ID:           strconv.Itoa(int(connCounter.Get())),
 				Conn:         c,
 				PrefixLogger: log.NewPrefixLogger(),
 			}
