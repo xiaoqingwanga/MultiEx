@@ -22,13 +22,13 @@ type options struct {
 
 var PortMap map[string]string
 var ClientID string
-
-var pingFlag util.Count
+var counterMap map[string]util.Count
 
 func Main() {
 	options := option()
 
 	log.Init(options.logLevel, options.logTo)
+	counterMap = make(map[string]util.Count)
 
 	PortMap = make(map[string]string)
 	PortMap = options.portMap
@@ -107,9 +107,14 @@ func work(remote string, token string) {
 		case *msg.ReNewClient:
 			log.Info("connect server success, and client get a id:" + nm.ID)
 			ClientID = nm.ID
+			var count util.Count
+			counterMap[ClientID] = count
 			go ping(ctrl, nm.ID)
 		case *msg.Pong:
-			pingFlag.Dec()
+			c, ok := counterMap[ClientID]
+			if ok {
+				c.Dec()
+			}
 		case *msg.PortInUse:
 			log.Warn("server port %s is in use. mapping %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
 		case *msg.NewProxy:
@@ -141,21 +146,21 @@ func dial(remote, token string) (conn net.Conn, ports []string) {
 	return
 }
 
-func ping(c net.Conn, clientId string) {
-	var fail bool
+func ping(conn net.Conn, clientId string) {
 	for {
-		if pingFlag.Get() > 2 || fail {
+		c, ok := counterMap[clientId]
+		if !ok || c.Get() > 2 {
 			log.Info("server no heart beat for a long time" + ", and current client id:" + clientId)
 			return
 		}
 		ticker := time.Tick(time.Second * 10)
 		select {
 		case <-ticker:
-			e := msg.WriteMsg(c, msg.Ping{})
+			e := msg.WriteMsg(conn, msg.Ping{})
 			if e != nil {
-				fail = true
+				c.IncN(3)
 			}
-			pingFlag.Inc()
+			c.Inc()
 		}
 	}
 }

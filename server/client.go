@@ -104,7 +104,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 	}()
 
 	var proxy Conn
-	for i := 0; i < 5 && proxy == nil; i++ {
+	for i := 0; i < 10 && proxy == nil; i++ {
 		client.Conn.Info("try to get proxy connection...")
 		select {
 		case proxy = <-client.Proxies:
@@ -115,7 +115,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 				proxy = nil
 			}
 		default:
-			client.Conn.Info("no proxy connections available, send NewProxy cmd")
+			client.Conn.Info("no proxy available, send NewProxy")
 			msg.WriteMsg(client.Conn, msg.NewProxy{})
 			select {
 			case proxy = <-client.Proxies:
@@ -125,14 +125,13 @@ func handlePublic(port string, c net.Conn, client *Client) {
 					proxy = nil
 				}
 			case <-time.After(time.Second * 3):
-				client.Conn.Warn("still no proxy after 3 secs")
+				client.Conn.Warn("no proxy after 3 secs")
 			}
 		}
 	}
 
+	// just exit
 	if proxy == nil {
-		client.Conn.Error("cannot get proxy, client to be closed")
-		client.Close()
 		return
 	}
 
