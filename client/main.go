@@ -20,6 +20,9 @@ type options struct {
 	portMap    map[string]string
 }
 
+var ctrlLog log.PrefixLogger
+var proxyLog log.PrefixLogger
+
 var PortMap map[string]string
 var ClientID string
 var counterMap map[string]util.Count
@@ -29,6 +32,7 @@ var inUsePortCount int
 func Main() {
 	options := option()
 	log.Init(options.logLevel, options.logTo)
+	proxyLog.AddPrefix("proxy")
 
 	counterMap = make(map[string]util.Count)
 
@@ -82,7 +86,7 @@ func work(remote string, token string) {
 		}
 		if e != nil || inUsePortCount == len(PortMap) {
 			if e != nil {
-				log.Error("error when receive cmd: %v", e)
+				ctrlLog.Error("%v", e)
 			}
 			ctrl = nil
 			inUsePortCount = 0
@@ -96,10 +100,10 @@ func work(remote string, token string) {
 					t = 5 * time.Second
 				case 1:
 					tip = fmt.Sprintf(template, "2nd", 60)
-					t = 30 * time.Second
+					t = 60 * time.Second
 				case 2:
 					tip = fmt.Sprintf(template, "3rd", 120)
-					t = 60 * time.Second
+					t = 120 * time.Second
 				}
 				log.Info(tip)
 				time.Sleep(t)
@@ -117,7 +121,8 @@ func work(remote string, token string) {
 		}
 		switch nm := m.(type) {
 		case *msg.ReNewClient:
-			log.Info("connect server success, and client get a id:" + nm.ID)
+			ctrlLog = log.NewPrefixLogger("ctrl-" + nm.ID)
+			ctrlLog.Info("connect server success")
 			ClientID = nm.ID
 			var count util.Count
 			counterMap[ClientID] = count
@@ -129,15 +134,15 @@ func work(remote string, token string) {
 			}
 		case *msg.PortInUse:
 			inUsePortCount++
-			log.Warn("server port %s is in use. mapping %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
+			ctrlLog.Warn("server port %s is in use. mapping %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
 		case *msg.NewProxy:
 			//not elegant. when client receive newproxy represents client and server communicate perfectly
 			retryCount = 0
 
-			log.Info("receive NewProxy cmd")
+			ctrlLog.Info("receive NewProxy cmd")
 			p, e := net.Dial("tcp", remote)
 			if e != nil {
-				log.Error("cannot dial remote,%v", e)
+				ctrlLog.Error("cannot dial remote,%v", e)
 				break
 			}
 			msg.WriteMsg(p, msg.NewProxy{ClientID: ClientID})
@@ -166,7 +171,7 @@ func ping(conn net.Conn, clientId string) {
 	for {
 		counter, ok := counterMap[clientId]
 		if !ok || counter.Get() > 2 {
-			log.Info("server no heart beat for a long time" + ", and current client id:" + clientId)
+			ctrlLog.Info("server no heart beat for a long time" + ", and current client id:" + clientId)
 			return
 		}
 		ticker := time.Tick(time.Second * 10)
@@ -187,27 +192,27 @@ func forward(c net.Conn) {
 	}()
 	m, e, _ := msg.ReadMsg(c)
 	if e != nil {
-		log.Warn("proxy connection die")
+		proxyLog.Warn("when read cmd,%v", e)
 		return
 	}
 
 	nm, ok := m.(*msg.ForwardInfo)
 	if !ok {
-		log.Warn("remote server seems insane...")
+		proxyLog.Warn("remote server seems insane...")
 		return
 	}
 
-	log.Info("forwarding...")
+	proxyLog.Info("forwarding...")
 
 	lc, e := net.Dial("tcp", ":"+PortMap[nm.Port])
 	if e != nil {
-		log.Warn("dial local port fail, %v", e)
+		proxyLog.Warn("dial local port fail, %v", e)
 		c.Close()
 		return
 	}
 	defer lc.Close()
 	go io.Copy(lc, c)
 	io.Copy(c, lc)
-	log.Info("forward finished")
+	proxyLog.Info("a forward finished")
 	return
 }
