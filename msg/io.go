@@ -1,6 +1,8 @@
 package msg
 
 import (
+	"MultiEx/util"
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -9,12 +11,11 @@ import (
 )
 
 // ReadMsg read bytes from reader and convert them to a message.
-func ReadMsg(r io.Reader) (m Message, e error) {
+func ReadMsg(r io.Reader) (m Message, e error, retry bool) {
 	// Read size of message.
 	var size int16
 	e = binary.Read(r, binary.LittleEndian, &size)
 	if e != nil {
-
 		return
 	}
 	// Read message bytes and convert to json object.
@@ -30,6 +31,7 @@ func ReadMsg(r io.Reader) (m Message, e error) {
 	var pkg pack
 	e = json.Unmarshal(bytes, &pkg)
 	if e != nil {
+		retry = true
 		return
 	}
 	switch pkg.Typ {
@@ -80,16 +82,18 @@ func WriteMsg(w io.Writer, msg Message) (e error) {
 	if e != nil {
 		return
 	}
-	pLen := int16(len(pBytes))
-	e = binary.Write(w, binary.LittleEndian, pLen)
+
+	buffer := new(bytes.Buffer)
+	e = binary.Write(buffer, binary.LittleEndian, int16(len(pBytes)))
 	if e != nil {
 		return
 	}
-	l, e := w.Write(pBytes)
+	composite := util.BytesCombine(buffer.Bytes(), pBytes)
+	l, e := w.Write(composite)
 	if e != nil {
 		return
 	}
-	if int16(l) != pLen {
+	if l != len(composite) {
 		e = fmt.Errorf("write package to writer failed")
 	}
 	return

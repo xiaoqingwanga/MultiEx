@@ -3,7 +3,9 @@ package server
 import (
 	"MultiEx/log"
 	"MultiEx/msg"
+	"MultiEx/util"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -21,7 +23,7 @@ func HandleClient(port string, token string, reg *ClientRegistry) {
 				}
 			}()
 
-			m, e := msg.ReadMsg(c)
+			m, e,_ := msg.ReadMsg(c)
 			if e != nil {
 				c.Warn("cannot read msg from %s", c.RemoteAddr().String())
 				c.Close()
@@ -37,16 +39,26 @@ func HandleClient(port string, token string, reg *ClientRegistry) {
 					return
 				}
 
-
-				clientCounter.Inc()
 				now := time.Now()
+				var inUsePort util.Count
 				client := &Client{
-					ID:       strconv.Itoa(int(clientCounter.Get())),
-					Conn:     c,
-					Ports:    nM.Forwards,
-					Proxies:  make(chan Conn, 30),
-					LastPing: &now,
+					Conn:      c,
+					Ports:     nM.Forwards,
+					InUsePort: inUsePort,
+					Proxies:   make(chan Conn, 30),
+					LastPing:  &now,
 				}
+
+				var wg sync.WaitGroup
+				client.StartListener(&wg)
+				wg.Wait()
+				if int(client.InUsePort.Get()) == len(client.Ports) {
+					client.Conn.Warn("all port %v not available.this client not work,abort..", client.Ports)
+					client.Close()
+					return
+				}
+				clientCounter.Inc()
+				client.ID = strconv.Itoa(int(clientCounter.Get()))
 				c.AddPrefix("client-" + client.ID)
 				reg.Register(client.ID, client)
 				c.Info("client registered")
@@ -55,7 +67,6 @@ func HandleClient(port string, token string, reg *ClientRegistry) {
 				})
 				msg.WriteMsg(c, msg.NewProxy{})
 				go client.AcceptCmd(reg)
-				go client.StartListener()
 			case *msg.NewProxy:
 				c.ReplacePrefix("conn", "proxy")
 				oC, ok := (*reg)[nM.ClientID]

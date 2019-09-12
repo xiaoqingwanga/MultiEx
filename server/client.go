@@ -2,8 +2,10 @@ package server
 
 import (
 	"MultiEx/msg"
+	"MultiEx/util"
 	"io"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -12,6 +14,7 @@ type Client struct {
 	ID        string
 	Conn      Conn
 	Ports     []string
+	InUsePort util.Count
 	Listeners []net.Listener
 	Proxies   chan Conn
 	LastPing  *time.Time
@@ -20,7 +23,7 @@ type Client struct {
 func (client *Client) Close() {
 	defer func() {
 		if r := recover(); r != nil {
-			client.Conn.Warn("unexpected error: %v", r)
+			client.Conn.Warn("when close a client, unexpected error: %v", r)
 		}
 	}()
 	client.Conn.Info("client closing...")
@@ -29,7 +32,6 @@ func (client *Client) Close() {
 	// close channel,dont accept new proxy
 	close(client.Proxies)
 	for c := range client.Proxies {
-		msg.WriteMsg(client.Conn, msg.CloseProxy{})
 		c.Close()
 	}
 	for _, l := range client.Listeners {
@@ -40,26 +42,27 @@ func (client *Client) Close() {
 
 func (client *Client) AcceptCmd(reg *ClientRegistry) {
 	go func() {
-		ticker := time.Tick(time.Second * 31)
 		for {
+			ticker := time.Tick(time.Second * 30)
 			select {
 			case <-ticker:
 				if client.LastPing == nil {
-					client.Conn.Error("client already closed, stop ticker for ping")
+					client.Conn.Error("client already closed, stop ticker to check ping")
 					return
 				}
 				if time.Now().Sub(*client.LastPing) > time.Minute {
 					client.Conn.Warn("client not ping too long")
 					client.Close()
 					reg.Unregister(client.ID)
+					return
 				}
 			}
 		}
 	}()
 	for {
-		m, e := msg.ReadMsg(client.Conn)
+		m, e,_ := msg.ReadMsg(client.Conn)
 		if e != nil {
-			client.Conn.Warn("%s when read message", e)
+			client.Conn.Warn("%s when read cmd from client", e)
 			client.Close()
 			break
 		}
@@ -72,15 +75,19 @@ func (client *Client) AcceptCmd(reg *ClientRegistry) {
 	}
 }
 
-func (client *Client) StartListener() {
+func (client *Client) StartListener(wg *sync.WaitGroup) {
+	wg.Add(len(client.Ports))
 	for _, p := range client.Ports {
 		go func(port string) {
 			l, e := net.Listen("tcp", ":"+port)
 			if e != nil {
+				client.InUsePort.Inc()
+				wg.Done()
 				client.Conn.Warn("port %s is in use", port)
 				msg.WriteMsg(client.Conn, msg.PortInUse{Port: port})
 				return
 			}
+			wg.Done()
 			client.Listeners = append(client.Listeners, l)
 			for {
 				c, e := l.Accept()
@@ -91,7 +98,6 @@ func (client *Client) StartListener() {
 				client.Conn.Info("remote host:%s is coming", c.RemoteAddr().String())
 				go handlePublic(port, c, client)
 			}
-
 		}(p)
 	}
 }
@@ -125,7 +131,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 					proxy = nil
 				}
 			case <-time.After(time.Second * 3):
-				client.Conn.Warn("no proxy after 3 secs")
+				client.Conn.Warn("no proxy after 5 secs")
 			}
 		}
 	}

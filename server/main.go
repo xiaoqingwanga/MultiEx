@@ -2,8 +2,8 @@ package server
 
 import (
 	"MultiEx/log"
-	"flag"
 	"MultiEx/util"
+	"flag"
 )
 
 type options struct {
@@ -34,6 +34,11 @@ func option() options {
 	logLevel := flag.String("logLevel", "INFO", "the log level of this program.")
 	logTo := flag.String("logTo", "stdout", "the location where logs save. Empty value and stdout have special meaning")
 	flag.Parse()
+
+	//logTo := "stdout"
+	//logLevel := "INFO"
+	//token := "a"
+	//clientPort := ":8070"
 	return options{
 		token:      *token,
 		clientPort: *clientPort,
