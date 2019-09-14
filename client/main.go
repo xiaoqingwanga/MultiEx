@@ -86,23 +86,23 @@ func work(remote string, token string) {
 		}
 		if e != nil || inUsePortCount == len(PortMap) {
 			if e != nil {
-				ctrlLog.Error("%v", e)
+				ctrlLog.Error("error when receive cmd,%v", e)
 			}
 			ctrl = nil
 			inUsePortCount = 0
-			template := "try to reconnect %s times, after %d seconds"
+			template := "after %d seconds try to reconnect %s time"
 			for retryCount < 3 && ctrl == nil {
 				var tip string
 				var t time.Duration
 				switch retryCount {
 				case 0:
-					tip = fmt.Sprintf(template, "1st", 3)
+					tip = fmt.Sprintf(template, 5, "first")
 					t = 5 * time.Second
 				case 1:
-					tip = fmt.Sprintf(template, "2nd", 60)
+					tip = fmt.Sprintf(template, 60, "second")
 					t = 60 * time.Second
 				case 2:
-					tip = fmt.Sprintf(template, "3rd", 120)
+					tip = fmt.Sprintf(template, 120, "third")
 					t = 120 * time.Second
 				}
 				log.Info(tip)
@@ -122,7 +122,7 @@ func work(remote string, token string) {
 		switch nm := m.(type) {
 		case *msg.ReNewClient:
 			ctrlLog = log.NewPrefixLogger("ctrl-" + nm.ID)
-			ctrlLog.Info("connect server success")
+			ctrlLog.Info("successfully connect server")
 			ClientID = nm.ID
 			var count util.Count
 			counterMap[ClientID] = count
@@ -134,7 +134,7 @@ func work(remote string, token string) {
 			}
 		case *msg.PortInUse:
 			inUsePortCount++
-			ctrlLog.Warn("server port %s is in use. mapping %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
+			log.Warn("server port %s is in use. mapping %s -> %s not take effect", nm.Port, nm.Port, PortMap[nm.Port])
 		case *msg.NewProxy:
 			//not elegant. when client receive newproxy represents client and server communicate perfectly
 			retryCount = 0
@@ -142,7 +142,7 @@ func work(remote string, token string) {
 			ctrlLog.Info("receive NewProxy cmd")
 			p, e := net.Dial("tcp", remote)
 			if e != nil {
-				ctrlLog.Error("cannot dial remote,%v", e)
+				ctrlLog.Error("error when new a proxy,%v", e)
 				break
 			}
 			msg.WriteMsg(p, msg.NewProxy{ClientID: ClientID})
@@ -152,10 +152,10 @@ func work(remote string, token string) {
 }
 
 func dial(remote, token string) (conn net.Conn, ports []string) {
-	log.Info("attempt to connect '%s' with token '%s' ...", remote, token)
-	conn, e := net.DialTimeout("tcp", remote, time.Second*5)
+	log.Info("attempt to connect '%s' with token '%s'", remote, token)
+	conn, e := net.DialTimeout("tcp", remote, time.Second*15)
 	if e != nil {
-		log.Error("%v", e)
+		log.Error("dial server fail, %v", e)
 		conn = nil
 		return
 	}
@@ -171,7 +171,7 @@ func ping(conn net.Conn, clientId string) {
 	for {
 		counter, ok := counterMap[clientId]
 		if !ok || counter.Get() > 2 {
-			ctrlLog.Info("server no heart beat for a long time" + ", and current client id:" + clientId)
+			ctrlLog.Info("server no heart beat for a long time" + ", and this client id:" + clientId)
 			return
 		}
 		ticker := time.Tick(time.Second * 10)
@@ -192,7 +192,7 @@ func forward(c net.Conn) {
 	}()
 	m, e, _ := msg.ReadMsg(c)
 	if e != nil {
-		proxyLog.Warn("when read cmd,%v", e)
+		proxyLog.Warn("error when read cmd,%v", e)
 		return
 	}
 
@@ -202,7 +202,7 @@ func forward(c net.Conn) {
 		return
 	}
 
-	proxyLog.Info("forwarding...")
+	proxyLog.Info("start a forward")
 
 	lc, e := net.Dial("tcp", ":"+PortMap[nm.Port])
 	if e != nil {

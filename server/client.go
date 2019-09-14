@@ -110,7 +110,7 @@ func handlePublic(port string, c net.Conn, client *Client) {
 	}()
 
 	var proxy Conn
-	for i := 0; i < 10 && proxy == nil; i++ {
+	for i := 0; i < 5 && proxy == nil; i++ {
 		client.Conn.Info("try to get proxy connection...")
 		select {
 		case proxy = <-client.Proxies:
@@ -130,8 +130,8 @@ func handlePublic(port string, c net.Conn, client *Client) {
 				if e != nil {
 					proxy = nil
 				}
-			case <-time.After(time.Second * 3):
-				client.Conn.Warn("no proxy after 5 secs")
+			case <-time.After(time.Second * 15):
+				client.Conn.Warn("no proxy after 15 secs")
 			}
 		}
 	}
