@@ -25,7 +25,7 @@ var proxyLog log.PrefixLogger
 
 var PortMap map[string]string
 var ClientID string
-var counterMap map[string]util.Count
+var counterMap map[string]*util.Count
 var retryCount int
 var inUsePortCount int
 
@@ -34,7 +34,7 @@ func Main() {
 	log.Init(options.logLevel, options.logTo)
 	proxyLog.AddPrefix("proxy")
 
-	counterMap = make(map[string]util.Count)
+	counterMap = make(map[string]*util.Count)
 
 	PortMap = make(map[string]string)
 	PortMap = options.portMap
@@ -53,9 +53,9 @@ func option() options {
 
 	//logTo := "stdout"
 	//logLevel := "INFO"
-	//remotePort := "10.13.20.112:8070"
+	//remotePort := "182.61.18.71:8070"
 	//token := "a"
-	//ports := "8443-8443"
+	//ports := "8444-8444"
 
 	portMap := make(map[string]string)
 	pairs := strings.Split(*ports, ",")
@@ -86,7 +86,7 @@ func work(remote string, token string) {
 		}
 		if e != nil || inUsePortCount == len(PortMap) {
 			if e != nil {
-				ctrlLog.Error("error when receive cmd,%v", e)
+				ctrlLog.Error("error when read cmd,%v", e)
 			}
 			ctrl = nil
 			inUsePortCount = 0
@@ -125,7 +125,7 @@ func work(remote string, token string) {
 			ctrlLog.Info("successfully connect server")
 			ClientID = nm.ID
 			var count util.Count
-			counterMap[ClientID] = count
+			counterMap[ClientID] = &count
 			go ping(ctrl, ClientID)
 		case *msg.Pong:
 			c, ok := counterMap[ClientID]
@@ -170,8 +170,9 @@ func dial(remote, token string) (conn net.Conn, ports []string) {
 func ping(conn net.Conn, clientId string) {
 	for {
 		counter, ok := counterMap[clientId]
-		if !ok || counter.Get() > 2 {
-			ctrlLog.Info("server no heart beat for a long time" + ", and this client id:" + clientId)
+		//log.Info("counter:%d", counter.Get())
+		if !ok || counter.Get() > 4 {
+			log.Info("no heart beat for a long time with client id:%s, stop ping", clientId)
 			return
 		}
 		ticker := time.Tick(time.Second * 10)
